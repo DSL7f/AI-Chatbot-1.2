@@ -48,9 +48,7 @@ def call_openrouter_api(messages):
         }
         data = {
             "model": "qwen/qwq-32b",
-            "route_preferences": {
-                "provider": "groq"  # Explicitly set Groq as the provider
-            },
+            "provider": {"id": "groq"},  # Corrected provider format
             "messages": messages
         }
         
