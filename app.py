@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import json
 import traceback
+from openai import OpenAI
 
 # Set page configuration
 st.set_page_config(
@@ -32,41 +33,40 @@ st.markdown("""
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Function to make API calls to OpenRouter
+# Function to make API calls to OpenRouter using OpenAI client
 def call_openrouter_api(messages):
     try:
         # Get API key from Streamlit secrets
         api_key = st.secrets["OPENROUTER_API_KEY"]
         
-        # Prepare the request
-        url = "https://openrouter.ai/api/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://streamlit-app.com",
-            "X-Title": "QWQ-32B AI Chatbot"
-        }
-        data = {
-            "model": "qwen/qwq-32b",
-            "provider": {"id": "groq"},  # Corrected provider format
-            "messages": messages
-        }
+        # Initialize OpenAI client with OpenRouter base URL
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key,
+        )
         
         # Make the API call
-        response = requests.post(url, headers=headers, json=data)
+        completion = client.chat.completions.create(
+            extra_headers={
+                "HTTP-Referer": "https://streamlit-app.com",
+                "X-Title": "QWQ-32B AI Chatbot",
+            },
+            extra_body={
+                "provider": {
+                    "id": "groq"  # Explicitly use Groq as the provider
+                }
+            },
+            model="qwen/qwq-32b",
+            messages=messages
+        )
         
-        # Check if the request was successful
-        if response.status_code == 200:
-            return response.json()["choices"][0]["message"]["content"]
-        else:
-            error_text = response.text
-            print(f"API Error: {response.status_code} - {error_text}")
-            return f"Error: Unable to get a response (Status code: {response.status_code}). Details: {error_text}"
-    
+        # Return the response content
+        return completion.choices[0].message.content
+        
     except Exception as e:
         error_details = traceback.format_exc()
         print(f"Error details: {error_details}")
-        return "I'm sorry, I encountered an error while processing your request. Please try again later."
+        return f"I'm sorry, I encountered an error while processing your request: {str(e)}"
 
 # Main app title and description
 st.title("QWQ-32B AI Chatbot")
