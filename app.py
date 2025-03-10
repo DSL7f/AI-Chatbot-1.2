@@ -60,7 +60,10 @@ def call_openrouter_api(messages):
                     "X-Title": "QWQ-32B AI Chatbot",
                 },
                 extra_body={
-                    "provider": "groq"  # Explicitly use Groq as the provider
+                    "provider": {
+                        "order": ["groq"],
+                        "allow_fallbacks": False
+                    }
                 },
                 model="qwen/qwq-32b",
                 messages=messages
@@ -81,7 +84,10 @@ def call_openrouter_api(messages):
             }
             data = {
                 "model": "qwen/qwq-32b",
-                "provider": "groq",  # Explicitly use Groq as the provider
+                "provider": {
+                    "order": ["groq"],
+                    "allow_fallbacks": False
+                },
                 "messages": messages
             }
             
