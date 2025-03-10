@@ -2,7 +2,13 @@ import streamlit as st
 import requests
 import json
 import traceback
-from openai import OpenAI
+
+# Try to import OpenAI, but don't fail if it's not available
+try:
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
 
 # Set page configuration
 st.set_page_config(
@@ -33,35 +39,64 @@ st.markdown("""
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Function to make API calls to OpenRouter using OpenAI client
+# Function to make API calls to OpenRouter
 def call_openrouter_api(messages):
     try:
         # Get API key from Streamlit secrets
         api_key = st.secrets["OPENROUTER_API_KEY"]
         
-        # Initialize OpenAI client with OpenRouter base URL
-        client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=api_key,
-        )
+        # If OpenAI package is available, use it
+        if OPENAI_AVAILABLE:
+            # Initialize OpenAI client with OpenRouter base URL
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=api_key,
+            )
+            
+            # Make the API call
+            completion = client.chat.completions.create(
+                extra_headers={
+                    "HTTP-Referer": "https://streamlit-app.com",
+                    "X-Title": "QWQ-32B AI Chatbot",
+                },
+                extra_body={
+                    "provider": {
+                        "id": "groq"  # Explicitly use Groq as the provider
+                    }
+                },
+                model="qwen/qwq-32b",
+                messages=messages
+            )
+            
+            # Return the response content
+            return completion.choices[0].message.content
         
-        # Make the API call
-        completion = client.chat.completions.create(
-            extra_headers={
+        # Fallback to using requests if OpenAI package is not available
+        else:
+            # Prepare the request
+            url = "https://openrouter.ai/api/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
                 "HTTP-Referer": "https://streamlit-app.com",
-                "X-Title": "QWQ-32B AI Chatbot",
-            },
-            extra_body={
-                "provider": {
-                    "id": "groq"  # Explicitly use Groq as the provider
-                }
-            },
-            model="qwen/qwq-32b",
-            messages=messages
-        )
-        
-        # Return the response content
-        return completion.choices[0].message.content
+                "X-Title": "QWQ-32B AI Chatbot"
+            }
+            data = {
+                "model": "qwen/qwq-32b",
+                "provider": {"id": "groq"},  # Ensure provider is an object
+                "messages": messages
+            }
+            
+            # Make the API call
+            response = requests.post(url, headers=headers, json=data)
+            
+            # Check if the request was successful
+            if response.status_code == 200:
+                return response.json()["choices"][0]["message"]["content"]
+            else:
+                error_text = response.text
+                print(f"API Error: {response.status_code} - {error_text}")
+                return f"Error: Unable to get a response (Status code: {response.status_code}). Details: {error_text}"
         
     except Exception as e:
         error_details = traceback.format_exc()
